@@ -27,23 +27,6 @@ This repo contains multiple packages, but **`packages/coding-agent/`** is the pr
 Unless user tells you exactly what to write:
 - **Never comment on GitHub** (issues, PRs, discussions).
 - **Never create issues on GitHub**.
-
-## Local binary
-
-Build a local `omp-dev` binary from the current branch:
-
-```sh
-bun build --compile \
-  --no-compile-autoload-bunfig --no-compile-autoload-dotenv \
-  --no-compile-autoload-tsconfig --no-compile-autoload-package-json \
-  --minify-identifiers --keep-names \
-  --define 'process.env.PI_COMPILED="true"' \
-  --root . --target bun-$(uname -s | tr A-Z a-z)-$(uname -m) \
-  ./packages/coding-agent/src/cli.ts --outfile ./omp-dev
-```
-
-Native addon must exist at `~/.omp/natives/<version>/pi_natives.<platform>.node`. If missing, copy from `packages/natives/native/` or download from the latest release.
-
 ## Code Quality
 
 - No `any` unless absolutely necessary.
@@ -169,6 +152,17 @@ Manual reader loops only when the protocol requires it (SSE, streaming JSON-RPC)
 - **Password hashing**: `Bun.password.hash(pw, "bcrypt")` / `Bun.password.verify(pw, hash)`.
 - **String width**: `Bun.stringWidth(text, { countAnsiEscapeCodes?: false })`.
 - **Wrapping**: `Bun.wrapAnsi(text, width, { wordWrap, hard, trim })`.
+- **Local binary**: build `omp-dev` from the current branch:
+  ```sh
+  bun build --compile \
+    --no-compile-autoload-bunfig --no-compile-autoload-dotenv \
+    --no-compile-autoload-tsconfig --no-compile-autoload-package-json \
+    --minify-identifiers --keep-names \
+    --define 'process.env.PI_COMPILED="true"' \
+    --root . --target bun-$(uname -s | tr A-Z a-z)-$(uname -m) \
+    ./packages/coding-agent/src/cli.ts --outfile ./omp-dev
+  ```
+  Native addon must exist at `~/.omp/natives/<version>/pi_natives.<platform>.node`. If missing, copy from `packages/natives/native/` or download from the latest release.
 
 ## Generated Files
 
