@@ -28,6 +28,22 @@ Unless user tells you exactly what to write:
 - **Never comment on GitHub** (issues, PRs, discussions).
 - **Never create issues on GitHub**.
 
+## Local binary
+
+Build a local `omp-dev` binary from the current branch:
+
+```sh
+bun build --compile \
+  --no-compile-autoload-bunfig --no-compile-autoload-dotenv \
+  --no-compile-autoload-tsconfig --no-compile-autoload-package-json \
+  --minify-identifiers --keep-names \
+  --define 'process.env.PI_COMPILED="true"' \
+  --root . --target bun-$(uname -s | tr A-Z a-z)-$(uname -m) \
+  ./packages/coding-agent/src/cli.ts --outfile ./omp-dev
+```
+
+Native addon must exist at `~/.omp/natives/<version>/pi_natives.<platform>.node`. If missing, copy from `packages/natives/native/` or download from the latest release.
+
 ## Code Quality
 
 - No `any` unless absolutely necessary.
