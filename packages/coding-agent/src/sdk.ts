@@ -2624,6 +2624,7 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 			pruneToolDescriptions: inlineToolDescriptors,
 			dialect: resolveDialect(settings.get("tools.format"), model),
 			abortOnFabricatedToolResult: settings.get("tools.abortOnFabricatedResult"),
+			toolCompression: settings.get("tools.compression"),
 			getToolChoice: () => session?.nextToolChoiceDirective(),
 			telemetry: options.telemetry,
 			appendOnlyContext: model

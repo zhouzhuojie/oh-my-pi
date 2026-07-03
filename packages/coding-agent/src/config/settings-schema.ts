@@ -3697,6 +3697,35 @@ export const SETTINGS_SCHEMA = {
 				"With in-band tool calls, stop the model immediately when it starts hallucinating a tool result mid-turn. Disable to let the model finish generating and discard the fabricated continuation instead.",
 		},
 	},
+	"tools.compression": {
+		type: "enum",
+		values: ["off", "conservative", "aggressive"] as const,
+		default: "conservative",
+		ui: {
+			tab: "tools",
+			group: "Execution",
+			label: "Tool Output Compression",
+			description:
+				"Compress large tool results before sending to the model. 'Conservative' trims output to a per-tool budget. 'Aggressive' uses tighter budgets. 'Off' sends raw output.",
+			options: [
+				{
+					value: "off",
+					label: "Off",
+					description: "No compression — send raw tool output to the model",
+				},
+				{
+					value: "conservative",
+					label: "Conservative",
+					description: "Trim tool output to a moderate per-tool budget",
+				},
+				{
+					value: "aggressive",
+					label: "Aggressive",
+					description: "Tighter budgets — maximize context savings",
+				},
+			],
+		},
+	},
 
 	"tools.maxTimeout": {
 		type: "number",

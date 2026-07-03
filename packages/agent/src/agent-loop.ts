@@ -40,6 +40,7 @@ import {
 import { preferredDialect } from "@oh-my-pi/pi-catalog/identity";
 import { sanitizeText, structuredCloneJSON } from "@oh-my-pi/pi-utils";
 import { INTENT_FIELD } from "@oh-my-pi/pi-wire";
+import { compressToolContentBlocks } from "./compression/tool-output-compression";
 import { type AgentRunCoverage, type AgentRunSummary, ToolCallBlockedError } from "./run-collector";
 import {
 	type AgentTelemetry,
@@ -1802,17 +1803,20 @@ async function executeToolCalls(
 			isError,
 		});
 
+		const compressedContent =
+			isError || !config.toolCompression || config.toolCompression === "off"
+				? result.content
+				: compressToolContentBlocks(result.content, toolCall.name, config.toolCompression);
 		const toolResultMessage: ToolResultMessage = {
 			role: "toolResult",
 			toolCallId: toolCall.id,
 			toolName: toolCall.name,
-			content: result.content,
+			content: compressedContent,
 			details: result.details,
 			isError,
 			...(result.useless && !isError ? { useless: true } : {}),
 			timestamp: Date.now(),
 		};
-		record.result = result;
 		record.isError = isError;
 		record.toolResultMessage = toolResultMessage;
 		record.resultEmitted = true;

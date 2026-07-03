@@ -266,6 +266,16 @@ export interface AgentLoopConfig extends SimpleStreamOptions {
 	 */
 	pruneToolDescriptions?: boolean;
 	/**
+	 * Compress tool output before it enters the conversation context.
+	 * Strips ANSI escape codes, collapses blank lines, and truncates
+	 * long output to per-tool line budgets (head+tail preservation).
+	 *
+	 * - `"off"`: no compression
+	 * - `"conservative"`: strip ANSI + collapse blanks, generous budgets (default)
+	 * - `"aggressive"`: all of the above + tight budgets (caveman-code style)
+	 */
+	toolCompression?: import("./compression/tool-output-compression").ToolCompressionLevel;
+	/**
 	 * Owned tool calling dialect.
 	 *
 	 * Undefined keeps provider-native tool calling. A dialect value sends no

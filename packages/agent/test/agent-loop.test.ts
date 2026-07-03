@@ -2993,3 +2993,104 @@ describe("agentLoop kCursorExecResolved (issue #4348)", () => {
 		expect(executionStarts[0].toolName).toBe("echo");
 	});
 });
+describe("agentLoop tool-output compression", () => {
+	it("compresses tool output in conversation context", async () => {
+		const longOutput = Array.from({ length: 500 }, (_, i) => `\x1b[32m${i}: output\x1b[0m`).join("\n");
+		const toolSchema = type({ value: "string" });
+		const tool: AgentTool<typeof toolSchema, { value: string }> = {
+			name: "bash",
+			label: "Bash",
+			description: "Run bash",
+			parameters: toolSchema,
+			async execute() {
+				return {
+					content: [{ type: "text", text: longOutput }],
+					details: {},
+				};
+			},
+		};
+
+		const context: AgentContext = { systemPrompt: [""], messages: [], tools: [tool] };
+		const mock = createMockModel({
+			responses: [
+				{ content: [{ type: "toolCall", id: "tc-1", name: "bash", arguments: { value: "run" } }] },
+				{ content: ["done"] },
+			],
+		});
+		const config: AgentLoopConfig = {
+			model: mock.model,
+			convertToLlm: identityConverter,
+			toolCompression: "conservative",
+		};
+
+		const events: AgentEvent[] = [];
+		const stream = agentLoop([createUserMessage("run bash")], context, config, undefined, mock.stream);
+		for await (const event of stream) {
+			events.push(event);
+		}
+
+		// tool_execution_end event emitted (stream consumers see the result)
+		const toolEnd = events.find(
+			(e): e is Extract<AgentEvent, { type: "tool_execution_end" }> => e.type === "tool_execution_end",
+		);
+		expect(toolEnd).toBeDefined();
+		expect(toolEnd!.result.content).toHaveLength(1);
+
+		// Conversation context gets compressed: ANSI stripped, long output truncated
+		const toolResultMsg = events.find(
+			(e): e is Extract<AgentEvent, { type: "message_start" }> =>
+				e.type === "message_start" && e.message.role === "toolResult",
+		);
+		expect(toolResultMsg).toBeDefined();
+		const resultText = (toolResultMsg!.message as ToolResultMessage).content[0];
+		expect(resultText).toHaveProperty("type", "text");
+		expect(resultText).toHaveProperty("text");
+		const text = (resultText as { type: "text"; text: string }).text;
+		expect(text).not.toContain("\x1b[");
+		expect(text).toContain("lines omitted");
+	});
+
+	it("skips compression when tool throws (isError path)", async () => {
+		const toolSchema = type({ value: "string" });
+		const tool: AgentTool<typeof toolSchema, { value: string }> = {
+			name: "bash",
+			label: "Bash",
+			description: "Run bash",
+			parameters: toolSchema,
+			async execute() {
+				throw new Error("\x1b[31mcommand failed\x1b[0m");
+			},
+		};
+
+		const context: AgentContext = { systemPrompt: [""], messages: [], tools: [tool] };
+		const mock = createMockModel({
+			responses: [
+				{ content: [{ type: "toolCall", id: "tc-1", name: "bash", arguments: { value: "run" } }] },
+				{ content: ["done"] },
+			],
+		});
+		const config: AgentLoopConfig = {
+			model: mock.model,
+			convertToLlm: identityConverter,
+			toolCompression: "conservative",
+		};
+
+		const events: AgentEvent[] = [];
+		const stream = agentLoop([createUserMessage("run bash")], context, config, undefined, mock.stream);
+		for await (const event of stream) {
+			events.push(event);
+		}
+
+		// Error result keeps ANSI — compression skipped on isError path
+		const toolResultMsg = events.find(
+			(e): e is Extract<AgentEvent, { type: "message_start" }> =>
+				e.type === "message_start" && e.message.role === "toolResult",
+		);
+		expect(toolResultMsg).toBeDefined();
+		const resultText = (toolResultMsg!.message as ToolResultMessage).content[0];
+		expect(resultText).toHaveProperty("type", "text");
+		const text = (resultText as { type: "text"; text: string }).text;
+		expect(text).toContain("\x1b[");
+		expect(text).toContain("command failed");
+	});
+});

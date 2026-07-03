@@ -10534,8 +10534,23 @@ export class AgentSession {
 			this.agent.replaceMessages(messages.slice(0, -1));
 			return;
 		}
-		// A miss means the failed turn is still in active context (or was never
-		// there); log just enough to explain why the identity check failed.
+		// The message isn't at the tail — scan backwards to find it. This happens
+		// during error-retry when a second failure appends a new assistant message
+		// before the first failure's cleanup runs, leaving the first orphaned.
+		for (let i = messages.length - 1; i >= 0; i--) {
+			const msg = messages[i];
+			if (msg.role === "assistant" && this.#isSameAssistantMessage(msg as AssistantMessage, assistantMessage)) {
+				this.agent.replaceMessages([...messages.slice(0, i), ...messages.slice(i + 1)]);
+				logger.debug("agent active context assistant removal (non-tail)", {
+					reason,
+					removedIndex: i,
+					candidateTimestamp: assistantMessage.timestamp,
+					lastTimestamp: lastAssistant?.timestamp,
+				});
+				return;
+			}
+		}
+		// Genuinely not in context — log for diagnostics.
 		logger.debug("agent active context assistant removal missed", {
 			reason,
 			lastRole: lastMessage?.role,
